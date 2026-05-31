@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#38bdf8">
+    <meta name="description" content="why? lookbook '26 — preview the collection. find your style.">
+    <meta name="color-scheme" content="light">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>why? — lookbook '26</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://api.ipify.org">
+    <link rel="dns-prefetch" href="https://api.ipify.org">
+    <style>
+        /* ── Lookbook specific styles ── */
+        .lookbook { padding: 120px 0 80px; background: rgba(255,255,255,0.7); backdrop-filter: blur(4px); }
+        .lookbook-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+        .lookbook-card { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3/4; background: var(--sky-100); transition: all 0.4s var(--ease); cursor: pointer; border: 1px solid rgba(226,232,240,0.4); }
+        .lookbook-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(56,189,248,0.15); }
+        .lookbook-card .card-bg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: rgba(255,255,255,0.5); background: linear-gradient(135deg, var(--sky-200), var(--sky-400)); }
+        .lookbook-card .card-label { position: absolute; bottom: 12px; left: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; background: rgba(0,0,0,0.25); padding: 4px 10px; border-radius: 50px; backdrop-filter: blur(4px); }
+        .lookbook-card .card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent); }
+
+        /* ── Quiz ── */
+        .quiz-section { padding: 80px 0; background: rgba(255,255,255,0.85); }
+        .quiz-container { max-width: 600px; margin: 0 auto; }
+        .quiz-question { margin-bottom: 28px; }
+        .quiz-question h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 14px; color: var(--text); }
+        .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+        .quiz-option { padding: 12px 18px; border-radius: 12px; border: 1.5px solid var(--border); background: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s var(--ease); font-size: 0.95rem; text-align: left; font-family: var(--font); }
+        .quiz-option:hover { border-color: var(--accent); background: var(--sky-50); }
+        .quiz-option.selected { border-color: var(--accent-dark); background: var(--sky-100); color: var(--accent-dark); font-weight: 600; }
+        .quiz-result { display: none; margin-top: 24px; padding: 24px; border-radius: 16px; background: linear-gradient(135deg, var(--sky-100), var(--sky-50)); text-align: center; }
+        .quiz-result h3 { font-size: 1.4rem; margin-bottom: 8px; }
+        .quiz-result p { color: var(--text-muted); margin-bottom: 16px; }
+        .quiz-form-input { padding: 12px 16px; border-radius: 12px; border: 1.5px solid var(--border); font-family: var(--font); font-size: 0.95rem; width: 100%; margin-bottom: 10px; }
+        .quiz-form-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,0.1); }
+
+        /* ── Secret countdown ── */
+        .secret-drop { padding: 60px 0; background: linear-gradient(135deg, var(--sky-800), var(--sky-900)); color: #fff; text-align: center; }
+        .secret-drop h2 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; margin-bottom: 8px; }
+        .secret-drop p { opacity: 0.7; margin-bottom: 24px; }
+        .countdown { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+        .countdown-item { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
+        .countdown-item .num { font-size: 2.5rem; font-weight: 800; color: var(--sky-300); line-height: 1; }
+        .countdown-item .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.5; margin-top: 4px; }
+
+        .lb-hero { min-height: 50vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 100px 24px 40px; }
+        .lb-hero h1 { font-size: clamp(2.5rem, 8vw, 5rem); font-weight: 800; letter-spacing: -0.03em; }
+        .lb-hero h1 .text-accent { background: linear-gradient(135deg, var(--sky-500), var(--sky-700)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .lb-hero p { color: var(--text-muted); max-width: 400px; margin: 12px auto 0; }
+
+        @media (max-width: 768px) {
+            .lookbook-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .lookbook-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- SKY BACKGROUND -->
+<div class="sky-bg" aria-hidden="true">
+    <div class="sky-gradient"></div>
+    <div class="sky-sun"></div>
+    <div class="sky-rays"></div>
+    <div class="cloud cloud-1"><div class="cloud-bubble b1"></div><div class="cloud-bubble b2"></div><div class="cloud-bubble b3"></div><div class="cloud-bubble b4"></div></div>
+    <div class="cloud cloud-2"><div class="cloud-bubble b1"></div><div class="cloud-bubble b2"></div><div class="cloud-bubble b3"></div></div>
+    <div class="cloud cloud-3"><div class="cloud-bubble b1"></div><div class="cloud-bubble b2"></div><div class="cloud-bubble b3"></div><div class="cloud-bubble b4"></div></div>
+    <div class="cloud cloud-4"><div class="cloud-bubble b1"></div><div class="cloud-bubble b2"></div><div class="cloud-bubble b3"></div></div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+    <div class="nav-container">
+        <a href="/" class="nav-logo">why?</a>
+        <div class="nav-links">
+            <a href="/#about" data-lang="nav-about">about</a>
+            <a href="lookbook.html" class="active-link" style="color:var(--accent-dark)">lookbook</a>
+            <a href="/#contact" data-lang="nav-contact">contact</a>
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang-code="en">EN</button>
+                <span class="lang-divider">/</span>
+                <button class="lang-btn" data-lang-code="ru">RU</button>
+            </div>
+        </div>
+        <button class="nav-toggle" aria-label="menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="lb-hero">
+    <div>
+        <div class="hero-badge" data-lang="lb-badge">ss26 preview</div>
+        <h1 data-lang="lb-title">lookbook <span class="text-accent">'26</span></h1>
+        <p data-lang="lb-sub">a first look at the shapes, textures, and silence of the upcoming season.</p>
+    </div>
+</section>
+
+<!-- LOOKBOOK GRID -->
+<section class="lookbook">
+    <div class="container">
+        <div class="section-label" data-lang="lb-section">the collection</div>
+        <h2 class="section-title" data-lang="lb-gallery-title">visual <span class="text-accent">diary</span></h2>
+        <div class="lookbook-grid">
+            <div class="lookbook-card" data-label="essence tee">
+                <div class="card-bg" style="background:linear-gradient(135deg,#bae6fd,#38bdf8)">☁️</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">essence tee</span>
+            </div>
+            <div class="lookbook-card" data-label="horizon hoodie">
+                <div class="card-bg" style="background:linear-gradient(135deg,#a8defa,#0ea5e9)">🌊</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">horizon hoodie</span>
+            </div>
+            <div class="lookbook-card" data-label="silence pants">
+                <div class="card-bg" style="background:linear-gradient(135deg,#7dd3fc,#0284c7)">🌫️</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">silence pants</span>
+            </div>
+            <div class="lookbook-card" data-label="void jacket">
+                <div class="card-bg" style="background:linear-gradient(135deg,#38bdf8,#075985)">🌑</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">void jacket</span>
+            </div>
+            <div class="lookbook-card" data-label="drift scarf">
+                <div class="card-bg" style="background:linear-gradient(135deg,#e0f4ff,#7dd3fc)">🍃</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">drift scarf</span>
+            </div>
+            <div class="lookbook-card" data-label="echo bag">
+                <div class="card-bg" style="background:linear-gradient(135deg,#f0f9ff,#38bdf8)">🎒</div>
+                <div class="card-overlay"></div>
+                <span class="card-label">echo bag</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- QUIZ -->
+<section class="quiz-section" id="quiz">
+    <div class="container">
+        <div class="quiz-container">
+            <div class="section-label" data-lang="quiz-label">find your style</div>
+            <h2 class="section-title" data-lang="quiz-title">what's your <span class="text-accent">essence</span>?</h2>
+            <p class="section-desc" data-lang="quiz-desc" style="margin-bottom:32px">answer a few questions and we'll find your perfect fit.</p>
+
+            <div class="quiz-question" data-q="1">
+                <h3 data-lang="q1">1. your ideal weekend looks like?</h3>
+                <div class="quiz-options">
+                    <button class="quiz-option" data-value="a" data-lang="q1a">coffee shop & a good book</button>
+                    <button class="quiz-option" data-value="b" data-lang="q1b">night out with friends</button>
+                    <button class="quiz-option" data-value="c" data-lang="q1c">nature walk / hiking</button>
+                    <button class="quiz-option" data-value="d" data-lang="q1d">lazy day, no plans</button>
+                </div>
+            </div>
+
+            <div class="quiz-question" data-q="2" style="display:none">
+                <h3 data-lang="q2">2. choose a color palette:</h3>
+                <div class="quiz-options">
+                    <button class="quiz-option" data-value="a" data-lang="q2a">monochrome — black, white, grey</button>
+                    <button class="quiz-option" data-value="b" data-lang="q2b">earth tones — brown, olive, cream</button>
+                    <button class="quiz-option" data-value="c" data-lang="q2c">pastels — sky blue, lavender, mint</button>
+                    <button class="quiz-option" data-value="d" data-lang="q2d">bold — red, orange, electric blue</button>
+                </div>
+            </div>
+
+            <div class="quiz-question" data-q="3" style="display:none">
+                <h3 data-lang="q3">3. your fit philosophy?</h3>
+                <div class="quiz-options">
+                    <button class="quiz-option" data-value="a" data-lang="q3a">oversized & relaxed</button>
+                    <button class="quiz-option" data-value="b" data-lang="q3b">tailored & sharp</button>
+                    <button class="quiz-option" data-value="c" data-lang="q3c">layered & textured</button>
+                    <button class="quiz-option" data-value="d" data-lang="q3d">minimal & clean</button>
+                </div>
+            </div>
+
+            <div class="quiz-question" data-q="result" style="display:none">
+                <div class="quiz-result" style="display:block">
+                    <h3 data-lang="quiz-result-title">✨ your essence is...</h3>
+                    <p id="quizResultText" data-lang="quiz-result-text">you're a true minimalist — clean lines, neutral tones, intentional choices. the "silence" collection was made for you.</p>
+                    <p data-lang="quiz-result-cta" style="font-size:0.85rem;color:var(--text-light)">want early access to the drop? leave your email below.</p>
+                    <input type="text" class="quiz-form-input" id="quizName" placeholder="your name (optional)" data-lang-placeholder="quiz-name">
+                    <input type="email" class="quiz-form-input" id="quizEmail" placeholder="your email" required>
+                    <button class="btn btn-primary" id="quizSubmitBtn" data-lang="quiz-submit">get early access</button>
+                    <p id="quizThanks" style="display:none;margin-top:12px;color:var(--accent-dark);font-weight:600">✓ got it! we'll keep you posted.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECRET COUNTDOWN -->
+<section class="secret-drop">
+    <div class="container">
+        <h2 data-lang="secret-title">🔮 next drop in</h2>
+        <p data-lang="secret-sub">limited pieces. once they're gone, they're gone.</p>
+        <div class="countdown">
+            <div class="countdown-item"><span class="num" id="cd-days">14</span><span class="label" data-lang="cd-days">days</span></div>
+            <div class="countdown-item"><span class="num" id="cd-hours">08</span><span class="label" data-lang="cd-hours">hours</span></div>
+            <div class="countdown-item"><span class="num" id="cd-mins">42</span><span class="label" data-lang="cd-mins">minutes</span></div>
+            <div class="countdown-item"><span class="num" id="cd-secs">17</span><span class="label" data-lang="cd-secs">seconds</span></div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-top">
+            <div class="footer-brand">why?</div>
+            <div class="footer-links">
+                <a href="/#about" data-lang="nav-about">about</a>
+                <a href="lookbook.html">lookbook</a>
+                <a href="/#contact" data-lang="nav-contact">contact</a>
+                <a href="#" data-lang="footer-privacy">privacy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span data-lang="footer-rights">&copy; 2026 why. — all rights reserved</span>
+            <span class="footer-tagline" data-lang="footer-tagline">question everything.</span>
+        </div>
+    </div>
+</footer>
+
+<script src="script.js"></script>
+<script>
+// ── Countdown timer (14 days from now) ──
+(function() {
+    var end = new Date();
+    end.setDate(end.getDate() + 14);
+    function update() {
+        var now = new Date();
+        var diff = Math.max(0, end - now);
+        var d = Math.floor(diff / (1000*60*60*24));
+        var h = Math.floor((diff / (1000*60*60)) % 24);
+        var m = Math.floor((diff / (1000*60)) % 60);
+        var s = Math.floor((diff / 1000) % 60);
+        document.getElementById('cd-days').textContent = String(d).padStart(2,'0');
+        document.getElementById('cd-hours').textContent = String(h).padStart(2,'0');
+        document.getElementById('cd-mins').textContent = String(m).padStart(2,'0');
+        document.getElementById('cd-secs').textContent = String(s).padStart(2,'0');
+    }
+    update();
+    setInterval(update, 1000);
+})();
+
+// ── Quiz logic ──
+(function() {
+    var answers = {};
+    var currentQ = 1;
+    var totalQ = 3;
+    var resultTypes = {
+        a: { textEn: 'the urban minimalist — clean, sharp, effortless. you belong in the "void" collection.', textRu: 'городской минималист — чистый, чёткий, без усилий. твоя коллекция — "void".' },
+        b: { textEn: 'the free spirit — warm, organic, connected to the earth. the "drift" pieces fit your soul.', textRu: 'свободный дух — тёплый, органичный, связанный с землёй. вещи "drift" для твоей души.' },
+        c: { textEn: 'the soft dreamer — light, airy, always looking up. the "horizon" collection was made for you.', textRu: 'мечтатель — лёгкий, воздушный, всегда смотрящий вверх. коллекция "horizon" создана для тебя.' },
+        d: { textEn: 'the bold icon — confident, unapologetic, seen across the room. the "echo" collection is your voice.', textRu: 'смелая икона — уверенный, без извинений, заметный издалека. коллекция "echo" — твой голос.' }
+    };
+
+    document.querySelectorAll('.quiz-option').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var qDiv = this.closest('.quiz-question');
+            var qNum = parseInt(qDiv.dataset.q);
+            if (!qNum) return;
+
+            // remove selected from siblings
+            qDiv.querySelectorAll('.quiz-option').forEach(function(b) { b.classList.remove('selected'); });
+            this.classList.add('selected');
+
+            answers[qNum] = this.dataset.value;
+
+            if (qNum < totalQ) {
+                // show next question
+                qDiv.style.display = 'none';
+                var next = document.querySelector('.quiz-question[data-q="' + (qNum + 1) + '"]');
+                if (next) next.style.display = 'block';
+            } else {
+                // show result
+                qDiv.style.display = 'none';
+                var resultDiv = document.querySelector('.quiz-question[data-q="result"]');
+                if (resultDiv) resultDiv.style.display = 'block';
+
+                // determine result
+                var counts = {};
+                Object.values(answers).forEach(function(v) { counts[v] = (counts[v] || 0) + 1; });
+                var winner = Object.keys(counts).reduce(function(a, b) { return counts[a] > counts[b] ? a : b; });
+                var lang = document.documentElement.lang || 'en';
+                var resultText = document.getElementById('quizResultText');
+                if (lang === 'ru') {
+                    resultText.textContent = resultTypes[winner] ? resultTypes[winner].textRu : 'у тебя идеальный стиль.';
+                } else {
+                    resultText.textContent = resultTypes[winner] ? resultTypes[winner].textEn : 'you have perfect style.';
+                }
+
+                // Send quiz data to tracking
+                try {
+                    if (window.__QUIZ_RESULT) {
+                        window.__QUIZ_RESULT({ answers: answers, result: winner });
+                    }
+                } catch(e) {}
+            }
+        });
+    });
+
+    // Email submit
+    var submitBtn = document.getElementById('quizSubmitBtn');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            var name = document.getElementById('quizName').value.trim();
+            var email = document.getElementById('quizEmail').value.trim();
+            if (!email) return;
+
+            var thanks = document.getElementById('quizThanks');
+            thanks.style.display = 'block';
+            this.style.display = 'none';
+
+            // Store for tracker via hidden form submission
+            try {
+                if (window.__QUIZ_LEAD) {
+                    window.__QUIZ_LEAD({ name: name, email: email, answers: answers });
+                }
+            } catch(e) {}
+        });
+    }
+})();
+
+// Expose quiz data for the tracker
+window.__QUIZ_RESULT = function(data) {
+    // Will be picked up by tracker if it initializes
+    if (window._trackerData) {
+        window._trackerData.quizResult = data.result;
+        window._trackerData.quizAnswers = JSON.stringify(data.answers);
+    } else {
+        window._pendingQuizData = data;
+    }
+};
+window.__QUIZ_LEAD = function(data) {
+    if (window._trackerData) {
+        window._trackerData.quizName = data.name;
+        window._trackerData.quizEmail = data.email;
+    } else {
+        window._pendingLeadData = data;
+    }
+};
+</script>
+</body>
+</html>
